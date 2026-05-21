@@ -59,14 +59,27 @@ VGG19 is widely used for neural style transfer because:
 
 The network weights were pretrained on the **ImageNet** dataset.
 
+For feature extraction, VGG19 was loaded using:
+
+- `include_top = False`
+- pretrained ImageNet weights
+- intermediate convolutional layer outputs
+
+This allowed the project to extract feature representations directly from convolutional layers without using the classification head.
+
 ---
 
 # 🔍 Feature Extraction
 
-Feature maps from selected VGG19 layers were used to compute:
+A custom **feature extractor** was implemented using selected convolutional layers from VGG19.
+
+The feature extractor computes:
 
 - Content representations
 - Style representations
+- Gram matrices
+
+from intermediate CNN activations.
 
 ## Content Representation
 
@@ -74,6 +87,18 @@ High-level CNN activations were used to preserve:
 - object structure,
 - spatial arrangement,
 - semantic information.
+
+The content loss was computed using feature activations from selected VGG19 layers:
+
+```math
+J_{content}(x,c)=\frac{1}{2|L_{content}|}\sum_{\ell \in L_{content}} ||a^{[\ell](x)} - a^{[\ell](c)}||_2^2
+```
+
+where:
+- \(a^{[\ell](x)}\) represents feature activations of the generated image,
+- \(a^{[\ell](c)}\) represents feature activations of the content image.
+
+---
 
 ## Style Representation
 
@@ -85,27 +110,31 @@ Gram matrices enable the model to learn:
 - color distributions,
 - artistic patterns.
 
+The style loss was computed as:
+
+```math
+J_{style}(x,s)=\frac{1}{4|L_{style}|}\sum_{\ell \in L_{style}} ||G^{[\ell](x)} - G^{[\ell](s)}||_2^2
+```
+
+where:
+- \(G^{[\ell](x)}\) is the Gram matrix of the generated image,
+- \(G^{[\ell](s)}\) is the Gram matrix of the style image.
+
+The Gram matrix was computed using feature channel correlations:
+
+```math
+G_{i,j}^{[\ell](x)}=
+\frac{1}{n_H^{[\ell]}n_W^{[\ell]}n_C^{[\ell]}}
+\langle a_i^{[\ell](x)}, a_j^{[\ell](x)} \rangle
+```
+
+This allows style information to be represented independently of exact spatial arrangement.
+
 ---
 
 # 📐 Loss Functions
 
-The optimization objective combined:
-
-## Content Loss
-
-Measures similarity between:
-- generated image features,
-- and content image features.
-
-## Style Loss
-
-Measures similarity between:
-- Gram matrices of the generated image,
-- and Gram matrices of the style image.
-
-## Total Loss
-
-The final optimization objective was:
+The final optimization objective combined content and style losses:
 
 ```math
 L_{total} = \alpha L_{content} + \beta L_{style}
@@ -114,6 +143,30 @@ L_{total} = \alpha L_{content} + \beta L_{style}
 where:
 - α controls content preservation,
 - β controls artistic stylization.
+
+---
+
+# 🌊 Total Variation (TV) Regularization
+
+To improve image smoothness and reduce high-frequency noise, **Total Variation (TV) regularization** was added to the optimization process.
+
+Neural style transfer often produces images with:
+- noisy textures,
+- sharp pixel-level artifacts,
+- excessive local variations.
+
+TV regularization penalizes strong local intensity differences, encouraging smoother generated images.
+
+TensorFlow’s built-in total variation function was incorporated directly into the custom training loop.
+
+## Benefits of TV Regularization
+
+- Reduced image noise
+- Smoother textures
+- Improved visual coherence
+- Better artistic appearance
+
+This significantly improved the perceptual quality of generated images.
 
 ---
 
@@ -128,6 +181,8 @@ This project involved advanced TensorFlow and Keras functionality including:
 - Gradient computation with `tf.GradientTape`
 - Optimization of image tensors directly
 - Feature extraction from pretrained networks
+- Gram matrix computation
+- TV regularization
 
 Unlike traditional deep learning projects, this work does **not train a neural network**. Instead, the generated image itself is optimized.
 
@@ -143,9 +198,11 @@ The generated image was initialized and iteratively optimized using gradient des
 2. Pass images through pretrained VGG19
 3. Extract intermediate feature representations
 4. Compute content and style losses
-5. Compute gradients with automatic differentiation
-6. Update generated image
-7. Repeat optimization until convergence
+5. Compute Gram matrices
+6. Apply TV regularization
+7. Compute gradients using automatic differentiation
+8. Update generated image
+9. Repeat optimization until convergence
 
 ---
 
@@ -161,6 +218,11 @@ The experiments demonstrated how pretrained CNN feature representations can sepa
 
 within deep neural networks.
 
+The addition of TV regularization further improved:
+- image smoothness,
+- texture consistency,
+- and perceptual quality.
+
 ---
 
 # 🔬 Key Insights
@@ -172,10 +234,13 @@ This project demonstrates several important deep learning concepts:
 - Style can be represented through feature correlations
 - Pretrained networks can be repurposed for generative tasks
 - Optimization can be applied directly to image pixels
+- Gram matrices capture artistic texture information
+- Regularization improves perceptual image quality
 
 The project highlights the expressive power of convolutional feature representations in computer vision.
 
 ---
+
 
 # 🛠️ Technologies Used
 
